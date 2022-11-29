@@ -1,10 +1,8 @@
 import requests
 import days
 
-aocsession = {'session' : '53616c7465645f5f34e4a9993c93195351cfe429bb5fb3c168e4952524127fb73f629ccec41b8f99319ff7e4e9eabde8d7d87ad1199c7b6b181f592878e499ca'}
-
 day = 19
-bUseTestInput = True
+bUseTestInput = False
 
 if bUseTestInput:
     print("Loading test input from file")
@@ -14,6 +12,11 @@ if bUseTestInput:
 else:    
     url = 'https://adventofcode.com/2021/day/' + str(day) + '/input'
     print("Loading input from AoC: " + url)
+
+    f = open("sessioncookie.txt", "r")
+    aocsession = {'session' : f.read().splitlines()[0]}
+    f.close()    
+    
     response = requests.get(url, cookies = aocsession)
     if response.status_code == 200:
         input = response.text.split('\n')
