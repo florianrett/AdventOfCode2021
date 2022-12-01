@@ -157,11 +157,13 @@ class SnailFishNumber:
 class Scanner:
 
     ID = -1
+    scannerLocations =  []
     beacons = []
     eulerDistances = {} # indices mapped to squared distance
 
     def __init__(self, ID, beacons = []) -> None:
         self.ID = ID
+        self.scannerLocations = []
         self.beacons = []
         self.eulerDistances = {}
         for b in beacons:
@@ -188,23 +190,6 @@ class Scanner:
         return pow(b[0]-a[0], 2) + pow(b[1]-a[1], 2) + pow(b[2]-a[2], 2)
 
     def TryMerge(self, other):        
-        # matchingBeacons = {}
-        # matchingDistances = []
-
-        # TODO: rewrite matching more efficiently. create distance sets -> union -> search for specific distances only (maybe reverse distance map)
-        # for d in self.eulerDistances:
-        #     for d2 in other.eulerDistances:
-        #         if self.eulerDistances[d] == other.eulerDistances[d2]:
-        #             matchingDistances.append(d)
-        #             for i in d:
-        #                 if i in matchingBeacons:
-        #                     matchingBeacons[i] += d2
-        #                     # print(d, d2)
-        #                 else:
-        #                     matchingBeacons[i] = list(d2)
-        #                     # print(d, d2)
-
-        # matchingBeacons = {k:max(set(matchingBeacons[k]), key=matchingBeacons[k].count) for k in matchingBeacons}
 
         # find number of matching distances between beacons
         ownDistances = set(self.eulerDistances.keys())
@@ -253,17 +238,17 @@ class Scanner:
                 if self.ValidateAlignmentVector(vectorSelf) and self.ValidateAlignmentVector(vectorOther):
                     break
         
-
-        # print(startSelf, endSelf, startOther, endOther, vectorSelf, vectorOther)
+        # calculate actual transformation
         rotationSolver = self.ResolveRotation(vectorSelf, vectorOther)
         translationVector = self.GetTranslationVector(startSelf, rotationSolver(startOther))
-        # print("translationVector:", translationVector)
-        # print(rotationSolver((1, 2, 4)))
         
         # Add all new beacons. AddBeacon should skip already existing ones
         for newBeacon in other.beacons:
             rotated = rotationSolver(newBeacon)
             self.AddBeacon(self.AddVector(rotated, translationVector))
+
+        # save other scanner location
+        self.scannerLocations.append(translationVector)
 
         return True
 
@@ -273,7 +258,7 @@ class Scanner:
 
     # resolves rotation between two vectors so applying rotation to origin vector will result in target vector
     def ResolveRotation(self, target, origin):
-        print("resolving rotation for vectors", target, origin)
+        # print("resolving rotation for vectors", target, origin)
         solvers = [
             lambda o : (o[0], o[1], o[2]),
             lambda o : (o[0], o[2] * -1, o[1]),

@@ -536,13 +536,41 @@ def day19a(input):
     # scan = hc.Scanner([])
     # print(scan.ResolveRotation((-4, -132, -21), (-132, 4, -21)))
     while len(scanners) > 1:
-        print("Remaining Scanners", len(scanners))
+        # print("Remaining Scanners", len(scanners))
         scanners = hf.FindAndMergeScanners(scanners)
 
     return len(scanners[0].beacons)
 
 def day19b(input):
-    return -1
+    inputdata = []
+    test = ""
+    for line in input:
+        if "scanner" in line:
+            current = []
+        elif len(line) > 0:
+            current.append(tuple([int(x) for x in line.split(",")]))
+        else:
+            inputdata.append(current)
+    inputdata.append(current) # last scanner
+
+    scanners = []
+    nextID = 0
+    for s in inputdata:
+        scanners.append(hc.Scanner(nextID, s))
+        nextID += 1
+    
+    while len(scanners) > 1:
+        scanners = hf.FindAndMergeScanners(scanners)
+
+    locations = scanners[0].scannerLocations
+    maxManhattenDistance = 0
+    for i in locations:
+        for j in locations:
+            dist = abs(j[0] - i[0]) + abs(j[1] - i[1]) + abs(j[2] - i[2])
+            if dist > maxManhattenDistance:
+                maxManhattenDistance = dist
+    
+    return maxManhattenDistance
 
 def day20a(input):
     alg = input[0]
