@@ -156,10 +156,12 @@ class SnailFishNumber:
 # Day 19
 class Scanner:
 
+    ID = -1
     beacons = []
     eulerDistances = {} # indices mapped to squared distance
 
-    def __init__(self, beacons = []) -> None:
+    def __init__(self, ID, beacons = []) -> None:
+        self.ID = ID
         self.beacons = []
         self.eulerDistances = {}
         for b in beacons:
@@ -169,8 +171,16 @@ class Scanner:
     
 
     def AddBeacon(self, beacon):
-        for i in range(len(self.beacons)):
-            self.eulerDistances[(i, len(self.beacons))] = self.SqEuler(self.beacons[i], beacon)
+        if beacon in self.beacons:
+            return
+
+        newIdx = len(self.beacons)
+        for i in range(newIdx):
+            dist = self.SqEuler(self.beacons[i], beacon)
+            if dist in self.beacons:
+                print("duplicate distance detected!")
+            # self.eulerDistances[(i, newIdx)] = dist
+            self.eulerDistances[dist] = (i, newIdx)
         self.beacons.append(beacon)
 
 
@@ -178,45 +188,70 @@ class Scanner:
         return pow(b[0]-a[0], 2) + pow(b[1]-a[1], 2) + pow(b[2]-a[2], 2)
 
     def TryMerge(self, other):        
-        matchingBeacons = {}
-        matchingDistances = []
+        # matchingBeacons = {}
+        # matchingDistances = []
 
         # TODO: rewrite matching more efficiently. create distance sets -> union -> search for specific distances only (maybe reverse distance map)
-        for d in self.eulerDistances:
-            for d2 in other.eulerDistances:
-                if self.eulerDistances[d] == other.eulerDistances[d2]:
-                    matchingDistances.append(d)
-                    for i in d:
-                        if i in matchingBeacons:
-                            matchingBeacons[i] += d2
-                            # print(d, d2)
-                        else:
-                            matchingBeacons[i] = list(d2)
-                            # print(d, d2)
+        # for d in self.eulerDistances:
+        #     for d2 in other.eulerDistances:
+        #         if self.eulerDistances[d] == other.eulerDistances[d2]:
+        #             matchingDistances.append(d)
+        #             for i in d:
+        #                 if i in matchingBeacons:
+        #                     matchingBeacons[i] += d2
+        #                     # print(d, d2)
+        #                 else:
+        #                     matchingBeacons[i] = list(d2)
+        #                     # print(d, d2)
 
-        matchingBeacons = {k:max(set(matchingBeacons[k]), key=matchingBeacons[k].count) for k in matchingBeacons}
-        if len(matchingBeacons) < 12:
+        # matchingBeacons = {k:max(set(matchingBeacons[k]), key=matchingBeacons[k].count) for k in matchingBeacons}
+
+        # find number of matching distances between beacons
+        ownDistances = set(self.eulerDistances.keys())
+        otherDistances = set(other.eulerDistances.keys())
+        matchingDistances = ownDistances.intersection(otherDistances)
+
+        if len(matchingDistances) < 66:
             # no explicit match, can't merge
             return False
-        else:
-            print(matchingBeacons)
+            
+        # try to match indices
+        mappedIndices = {}
+        for dist in matchingDistances:
+            otherIdxs = other.eulerDistances[dist]
 
-        # print(matchingBeacons)
-        # print(matchingDistances)
+            for idx in self.eulerDistances[dist]:
+                if idx in mappedIndices:
+                    mappedIndices[idx] = mappedIndices[idx].intersection(set(otherIdxs))
+                else:
+                    mappedIndices[idx] = set(otherIdxs)
 
-        for i in range(len(matchingDistances)):            
-            start = matchingDistances[i][0]
-            end = matchingDistances[i][1]
-            startSelf = self.beacons[start]
-            endSelf = self.beacons[end]
-            vectorSelf = (endSelf[0] - startSelf[0], endSelf[1] - startSelf[1], endSelf[2] - startSelf[2])
-            startOther = other.beacons[matchingBeacons[start]]
-            endOther = other.beacons[matchingBeacons[end]]
-            vectorOther = (endOther[0] - startOther[0], endOther[1] - startOther[1], endOther[2] - startOther[2])
+        if len(mappedIndices) < 12:
+            # not enough indices could be matched
+            return False        
 
-            if self.ValidateAlignmentVector(vectorSelf) and self.ValidateAlignmentVector(vectorOther): # TODO: check why there are duplicate mappings
-                break
+        mappedIndices = { i : mappedIndices[i].pop() for i in mappedIndices if len(mappedIndices[i]) == 1}
+
+        if(len(mappedIndices) < 12):
+            # not enough indices could be matched
+            return False
         
+        # find valid vectors for resolving rotation
+        for dist in matchingDistances:
+            indices =  self.eulerDistances[dist]
+            idx0 = indices[0]
+            idx1 = indices[1]
+            if idx0 in mappedIndices and idx1 in mappedIndices:
+                startSelf = self.beacons[idx0]
+                endSelf = self.beacons[idx1]
+                vectorSelf = (endSelf[0] - startSelf[0], endSelf[1] - startSelf[1], endSelf[2] - startSelf[2])
+                startOther = other.beacons[mappedIndices[idx0]]
+                endOther = other.beacons[mappedIndices[idx1]]
+                vectorOther = (endOther[0] - startOther[0], endOther[1] - startOther[1], endOther[2] - startOther[2])
+
+                # quit for loop when both vectors are valid
+                if self.ValidateAlignmentVector(vectorSelf) and self.ValidateAlignmentVector(vectorOther):
+                    break
         
 
         # print(startSelf, endSelf, startOther, endOther, vectorSelf, vectorOther)
@@ -224,12 +259,12 @@ class Scanner:
         translationVector = self.GetTranslationVector(startSelf, rotationSolver(startOther))
         # print("translationVector:", translationVector)
         # print(rotationSolver((1, 2, 4)))
-
-        # Add all non-matching beacons from other to this scanners known beacons
-        for unkownBeacon in [other.beacons[x] for x in range(len(other.beacons)) if x not in matchingBeacons.values()]:
-            rotated = rotationSolver(unkownBeacon)
-            self.AddBeacon(self.AddVector(rotationSolver(unkownBeacon), translationVector))
         
+        # Add all new beacons. AddBeacon should skip already existing ones
+        for newBeacon in other.beacons:
+            rotated = rotationSolver(newBeacon)
+            self.AddBeacon(self.AddVector(rotated, translationVector))
+
         return True
 
     def ValidateAlignmentVector(self, vector):

@@ -528,8 +528,10 @@ def day19a(input):
     inputdata.append(current) # last scanner
 
     scanners = []
+    nextID = 0
     for s in inputdata:
-        scanners.append(hc.Scanner(s))
+        scanners.append(hc.Scanner(nextID, s))
+        nextID += 1
     
     # scan = hc.Scanner([])
     # print(scan.ResolveRotation((-4, -132, -21), (-132, 4, -21)))
